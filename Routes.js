@@ -132,3 +132,94 @@ app.put("/profile", async (req, res) => {
 
 
 //============================================================================================
+
+
+// Define blog post schema
+const Blog = new mongoose.Schema({
+  title: { type: String, required: true },
+  body: { type: String, required: true },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  comments: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
+  date: { type: Date, default: Date.now },
+});
+const BlogPost = mongoose.model("BlogPost", Blog);
+
+// Create a blog post
+app.post("/blog-posts", async (req, res) => {
+  try {
+	const userId = req.session.userId; // Get the  user's ID from the session
+	
+	 //Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { title, body } = req.body;
+   
+    
+
+    // Create a new blog post
+    const newBlogPost = new BlogPost({
+      title,
+      body,
+      author: userId,
+    });
+
+    await newBlogPost.save();
+
+    return res.status(201).json({ message: "Blog post created successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//Show all posts 
+app.get("/api/posts", async (req, res) => {
+try {
+	const userId = req.session.userId; // Get the  user's ID from the session
+	// Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+	const posts = await Post.find(
+	{userId: userId}
+	);
+	
+	res.json(posts);
+	} catch (error) {
+	console.error(error);
+	res.status(500).json({ message: "Server error" });
+	}
+});
+
+// Update a blog post
+app.put("/blog-posts/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, body } = req.body;
+    const userId = req.session.userId; // Get the user's ID from the session
+	// Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Find the blog post by ID and author
+    const blogPost = await BlogPost.findOneAndUpdate(
+      { _id: id, author: userId },
+      { title, body },
+      { new: true }
+    );
+
+    if (!blogPost) {
+      return res
+        .status(404)
+        .json({ message: "Blog post not found or unauthorized" });
+    }
+
+    return res.status(200).json({ message: "Blog post updated successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
